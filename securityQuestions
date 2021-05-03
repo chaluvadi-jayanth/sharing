@@ -1,0 +1,149 @@
+<template>
+  <div>
+    <b-card-body class="wizard wizard-default">
+      <b-form class="add-card-money" @submit="onSubmit" @submit.prevent="formSubmit">
+        <b-form-group
+          :label="'Please answer all security questions to continue'"
+        >
+        </b-form-group>
+        <b-form-group
+          
+          :label="getAllAnsweredQuestions[0].question"
+          
+        >
+          <b-input-group>
+            <b-input-group-prepend>
+              <span class="input-group-text"
+                ><i class="simple-icon-question"></i
+              ></span>
+            </b-input-group-prepend>
+            
+            <b-form-input
+              v-model="$v.questionAnswer.$model"
+              :placeholder="getAllAnsweredQuestions[0].question"
+              :state="questionAnswer"
+               :class="
+                  (submit && this.questionAnswer == '') || $v.questionAnswer.$error
+                    ? 'red-border'
+                    : ''
+                "
+            />
+            
+           
+          </b-input-group>
+          <span
+                class="errorText"
+                :class="{
+                  visible:
+                    (!$v.questionAnswer.required ||
+                      !(
+                        $v.questionAnswer.maxLength &&
+                        $v.questionAnswer.minLength
+                      )) &&
+                    submit,
+                }"
+                >{{
+                  !($v.questionAnswer.required && $v.questionAnswer.minLength)
+                    ? "Please enter valid city"
+                    : ''
+                }}</span>
+          
+        </b-form-group>
+        <b-form-group v-if="getAllAnsweredQuestions.length">
+          <div class="my-4 d-flex justify-content-center">
+            <b-button @click="cancelBlockCard">{{
+              $t("card.cancel")
+            }}</b-button>
+            <b-button type="submit" class="ml-3">{{
+              $t("card.submit")
+            }}</b-button>
+          </div>
+        </b-form-group>
+      </b-form>
+    </b-card-body>
+  </div>
+</template>
+
+<script>
+import "vue-select/dist/vue-select.css";
+import { mapActions, mapGetters } from "vuex";
+import { validationMixin } from "vuelidate";
+const {
+  required,
+  maxLength,
+  minLength
+} = require("vuelidate/lib/validators");
+
+
+export default {
+  props: ["cardDetail"],
+  data() {
+    return {
+      questionAnswer:'',
+      getAllAnsweredQuestions: [],
+      submit:false,
+      buttonClicked:false
+    }
+    
+  },
+  mixins: [validationMixin],
+  validations: {
+    questionAnswer: {
+        required,
+        maxLength: maxLength(10),
+        minLength: minLength(3),
+      }
+  },
+  computed: {
+    ...mapGetters(["getAllAnsweredQuestionList"]),
+  },
+  methods: {
+    ...mapActions(["getAllAnsweredQuestionListAct", "blockCardAct"]),
+    cancelBlockCard() {
+      this.$bvModal.hide("cardBlockModal");
+    },
+    formSubmit(){
+      // if(this.questionAnswer=='')
+      // document.querySelector('.error').style.display='inline'
+      this.submit=true
+console.log("okkkkk")
+    },
+    onSubmit(event) {
+      event.preventDefault();
+      let answers = {
+        answers: this.getAllAnsweredQuestions?.map((item, index) => {
+          return { questionId: item.questionId, answer: item.questionAnswer };
+        }),
+      };
+      let payload = {
+        cardId: this.cardDetail.cardId,
+        answers: answers,
+      };
+      this.blockCardAct(payload).then((res) => {
+        if (res.data.success === true) {
+          this.$emit(
+            "cardBlocked",
+            "securityQuestions",
+            res.data.message || "Card is Blocked Successfully"
+          );
+        } else {
+          this.$toast.warning(`${res.data.message}`);
+        }
+      });
+    },
+  },
+  created() {
+    this.getAllAnsweredQuestionListAct().then((res) => {
+      this.getAllAnsweredQuestions = this.getAllAnsweredQuestionList;
+    });
+  },
+};
+</script>
+<style scoped>
+/* .error{
+  display: none;
+} */
+.red-border{
+  border-color:#ff4c6a;
+}
+</style>
